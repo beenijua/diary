@@ -197,8 +197,41 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;align-items:center;justify-content:center;cursor:pointer}
 #lightbox.open{display:flex}
 #lightboxImg{max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;cursor:default}
-#lbPrev,#lbNext{display:none;align-items:center;justify-content:center;}
-#lightbox.open #lbPrev,#lightbox.open #lbNext{display:flex;}
+#lbPrev,#lbNext{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10}
+#lbPrev{left:12px}
+#lbNext{right:12px}
+#lightbox.open #lbPrev,#lightbox.open #lbNext{display:flex}
+#lbCounter{display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600}
+
+/* ── 쓰기 모드 선택 ── */
+.write-mode-tabs{display:flex;gap:0;background:var(--border-light);border-radius:14px;padding:3px;margin-bottom:16px}
+.write-mode-tab{flex:1;padding:8px;border:none;background:transparent;border-radius:12px;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .2s}
+.write-mode-tab.active{background:var(--white);color:var(--green-deep);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+/* ── 블록 모드 ── */
+.block-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.block-item{background:var(--white);border:1px solid var(--border-light);border-radius:16px;overflow:hidden;position:relative}
+.block-controls{display:flex;gap:2px;padding:6px 8px;background:var(--cream);border-bottom:1px solid var(--border-light);justify-content:space-between;align-items:center}
+.block-ctrl-btn{background:none;border:none;font-size:14px;color:var(--text-muted);cursor:pointer;padding:4px 6px;border-radius:8px;line-height:1}
+.block-ctrl-btn:active{background:var(--border-light)}
+.block-ctrl-left{display:flex;gap:2px}
+.block-text-area{width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:15px;color:var(--text);outline:none;line-height:1.8;resize:none;padding:12px 14px;min-height:80px}
+.block-photo-wrap{position:relative}
+.block-photo-img{width:100%;max-height:260px;object-fit:cover;display:block;cursor:pointer}
+.block-photo-placeholder{padding:20px;text-align:center;color:var(--text-muted);font-size:13px;cursor:pointer}
+.block-add-row{display:flex;gap:8px;margin-bottom:16px}
+.block-add-btn{flex:1;padding:12px;border:2px dashed var(--border);border-radius:14px;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.block-add-btn:active{background:var(--green-mist);border-color:var(--green-mid);color:var(--green)}
+
+/* ── 사진모음 모드 순서 조정 ── */
+.photo-sort-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.photo-sort-item{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border-light);border-radius:14px;padding:8px}
+.photo-sort-img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer}
+.photo-sort-info{flex:1;font-size:12px;color:var(--text-muted)}
+.photo-sort-btns{display:flex;flex-direction:column;gap:4px}
+.photo-sort-btn{background:var(--green-mist);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--green-deep)}
+.photo-sort-btn:disabled{opacity:.3;cursor:not-allowed}
+.photo-sort-del{background:#FFF5F5;border:1px solid #FFD0D0;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#E05252}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:12px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;pointer-events:none}
@@ -305,7 +338,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
   <div class="page" id="page-write">
     <div class="write-toolbar">
       <button class="write-cancel" onclick="cancelWrite()">취소</button>
-      <span style="font-family:'DM Serif Display',serif;font-size:16px;color:var(--text)">새 일기</span>
+      <span style="font-family:'DM Serif Display',serif;font-size:16px;color:var(--text)" id="writeToolbarTitle">새 일기</span>
       <button class="write-save" onclick="saveDiary()">저장</button>
     </div>
     <div class="write-scroll">
@@ -324,21 +357,41 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
           <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;margin-bottom:10px">날씨</div>
           <div class="weather-row" id="weatherRow"></div>
         </div>
-        <!-- 사진 -->
-        <div class="photo-section">
-          <button class="photo-add-btn" onclick="document.getElementById('photoInput').click()">
-            📷 사진 추가하기
-          </button>
-          <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
-          <div class="photo-previews" id="photoPreviews"></div>
-        </div>
         <!-- 제목 -->
         <input class="title-input" id="writeTitle" placeholder="제목 (선택사항)" maxlength="50">
-        <div class="divider"></div>
-        <!-- 본문 -->
-        <textarea class="body-input" id="writeBody" placeholder="오늘은 어떤 하루였나요?&#10;&#10;무슨 일이 있었는지, 어떤 생각이 들었는지&#10;자유롭게 적어봐요 🌿"></textarea>
-        <!-- 태그 -->
-        <div>
+        <div class="divider" style="margin-bottom:16px"></div>
+
+        <!-- 모드 선택 -->
+        <div class="write-mode-tabs">
+          <button class="write-mode-tab active" id="modeTabBlock" onclick="selectWriteMode('block')">📝 블록 모드</button>
+          <button class="write-mode-tab" id="modeTabGallery" onclick="selectWriteMode('gallery')">📷 사진모음 모드</button>
+        </div>
+
+        <!-- ── 블록 모드 ── -->
+        <div id="blockModeArea">
+          <div class="block-list" id="blockList"></div>
+          <div class="block-add-row">
+            <button class="block-add-btn" onclick="addBlock('text')">✍️ 텍스트</button>
+            <button class="block-add-btn" onclick="addBlock('photo')">📷 사진</button>
+          </div>
+        </div>
+
+        <!-- ── 사진모음 모드 ── -->
+        <div id="galleryModeArea" style="display:none">
+          <div class="photo-section">
+            <button class="photo-add-btn" onclick="document.getElementById('galleryPhotoInput').click()">
+              📷 사진 추가하기 (최대 6장)
+            </button>
+            <input type="file" id="galleryPhotoInput" accept="image/*" multiple style="display:none" onchange="handleGalleryPhotos(event)">
+          </div>
+          <div class="photo-sort-list" id="photoSortList"></div>
+          <div style="height:12px"></div>
+          <div class="divider" style="margin-bottom:12px"></div>
+          <textarea class="body-input" id="galleryBody" placeholder="오늘은 어떤 하루였나요?&#10;자유롭게 적어봐요 🌿"></textarea>
+        </div>
+
+        <!-- 태그 (공통) -->
+        <div style="margin-top:12px">
           <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;margin-bottom:10px">태그</div>
           <div class="tag-input-row" id="tagInputRow">
             <input class="tag-input" id="tagInput" placeholder="#태그" maxlength="10" onkeydown="if(event.key==='Enter')addTag()">
@@ -346,7 +399,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" id="writeTags"></div>
         </div>
-        <div style="height:40px"></div>
+        <div style="height:60px"></div>
       </div>
     </div>
   </div>
@@ -573,6 +626,142 @@ function selectWeather(idx) {
   document.querySelectorAll('.weather-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
 }
 
+// ─── 쓰기 모드 ──────────────────────────────────────────────
+let writeMode = 'block'; // 'block' | 'gallery'
+let blocks = []; // [{id, type:'text'|'photo', content:'', src:''}]
+let galleryPhotos = []; // 사진모음 모드용
+
+function selectWriteMode(mode) {
+  writeMode = mode;
+  document.getElementById('modeTabBlock').classList.toggle('active', mode==='block');
+  document.getElementById('modeTabGallery').classList.toggle('active', mode==='gallery');
+  document.getElementById('blockModeArea').style.display = mode==='block' ? 'block' : 'none';
+  document.getElementById('galleryModeArea').style.display = mode==='gallery' ? 'block' : 'none';
+}
+
+// ─── 블록 모드 ──────────────────────────────────────────────
+let blockIdCounter = 0;
+
+function addBlock(type, content='', src='') {
+  const id = 'b' + (blockIdCounter++);
+  blocks.push({id, type, content, src});
+  renderBlocks();
+  // 텍스트 블록이면 자동 포커스
+  if (type === 'text') {
+    setTimeout(() => {
+      const ta = document.getElementById('bt_'+id);
+      if (ta) ta.focus();
+    }, 100);
+  } else {
+    // 사진 블록이면 바로 파일 선택
+    if (!src) triggerBlockPhoto(id);
+  }
+}
+
+function renderBlocks() {
+  const el = document.getElementById('blockList');
+  if (!blocks.length) { el.innerHTML = ''; return; }
+  el.innerHTML = blocks.map((b, i) => {
+    const isFirst = i === 0, isLast = i === blocks.length - 1;
+    const ctrl = `<div class="block-controls">
+      <div class="block-ctrl-left">
+        <button class="block-ctrl-btn" onclick="moveBlock('${b.id}',-1)" ${isFirst?'disabled style="opacity:.3"':''}>↑</button>
+        <button class="block-ctrl-btn" onclick="moveBlock('${b.id}',1)" ${isLast?'disabled style="opacity:.3"':''}>↓</button>
+        <span style="font-size:11px;color:var(--text-muted);padding:0 4px;">${b.type==='text'?'텍스트':'사진'}</span>
+      </div>
+      <button class="block-ctrl-btn" style="color:#E05252" onclick="removeBlock('${b.id}')">✕</button>
+    </div>`;
+    if (b.type === 'text') {
+      return `<div class="block-item">${ctrl}
+        <textarea class="block-text-area" id="bt_${b.id}" placeholder="여기에 내용을 입력해요..."
+          oninput="updateBlockContent('${b.id}',this.value)">${b.content}</textarea>
+      </div>`;
+    } else {
+      return `<div class="block-item">${ctrl}
+        <div class="block-photo-wrap">
+          ${b.src
+            ? `<img class="block-photo-img" src="${b.src}" onclick="openLightbox([this.src],0)" alt="">`
+            : `<div class="block-photo-placeholder" onclick="triggerBlockPhoto('${b.id}')">📷 사진을 탭해서 추가하세요</div>`}
+          ${b.src ? `<input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">
+          <button onclick="triggerBlockPhoto('${b.id}')" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);border:none;color:white;border-radius:10px;padding:5px 10px;font-size:12px;cursor:pointer;">사진 변경</button>` : ''}
+          ${!b.src ? `<input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">` : ''}
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+
+function updateBlockContent(id, val) {
+  const b = blocks.find(x=>x.id===id);
+  if (b) b.content = val;
+}
+
+function moveBlock(id, dir) {
+  const i = blocks.findIndex(x=>x.id===id);
+  if (i < 0) return;
+  const ni = i + dir;
+  if (ni < 0 || ni >= blocks.length) return;
+  [blocks[i], blocks[ni]] = [blocks[ni], blocks[i]];
+  renderBlocks();
+}
+
+function removeBlock(id) {
+  blocks = blocks.filter(x=>x.id!==id);
+  renderBlocks();
+}
+
+function triggerBlockPhoto(id) {
+  const inp = document.getElementById('bpf_'+id);
+  if (inp) inp.click();
+}
+
+function handleBlockPhoto(id, e) {
+  const file = e.target.files[0]; if (!file) return;
+  compressPhoto(file, src => {
+    const b = blocks.find(x=>x.id===id);
+    if (b) { b.src = src; renderBlocks(); }
+  });
+  e.target.value = '';
+}
+
+// ─── 사진모음 모드 ──────────────────────────────────────────────
+function handleGalleryPhotos(e) {
+  const files = Array.from(e.target.files);
+  if (galleryPhotos.length + files.length > 6) { showToast('사진은 최대 6장이에요', 'warn'); return; }
+  files.forEach(file => compressPhoto(file, src => {
+    galleryPhotos.push(src);
+    renderPhotoSortList();
+  }));
+  e.target.value = '';
+}
+
+function renderPhotoSortList() {
+  const el = document.getElementById('photoSortList');
+  if (!galleryPhotos.length) { el.innerHTML = ''; return; }
+  el.innerHTML = galleryPhotos.map((src, i) => `
+    <div class="photo-sort-item">
+      <img class="photo-sort-img" src="${src}" onclick="openLightbox(${JSON.stringify(galleryPhotos)},${i})" alt="">
+      <div class="photo-sort-info">${i+1}번째 사진</div>
+      <div class="photo-sort-btns">
+        <button class="photo-sort-btn" onclick="moveGalleryPhoto(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="photo-sort-btn" onclick="moveGalleryPhoto(${i},1)" ${i===galleryPhotos.length-1?'disabled':''}>↓</button>
+        <button class="photo-sort-del" onclick="removeGalleryPhoto(${i})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function moveGalleryPhoto(i, dir) {
+  const ni = i + dir;
+  if (ni < 0 || ni >= galleryPhotos.length) return;
+  [galleryPhotos[i], galleryPhotos[ni]] = [galleryPhotos[ni], galleryPhotos[i]];
+  renderPhotoSortList();
+}
+
+function removeGalleryPhoto(i) {
+  galleryPhotos.splice(i, 1);
+  renderPhotoSortList();
+}
+
 // ─── NAVIGATION ──────────────────────────────────────────────
 const NAV_PAGES = ['home','calendar','write','search','settings'];
 function showPage(name) {
@@ -588,7 +777,6 @@ function showPage(name) {
   if(pg){pg.classList.add('active');if(name==='write')pg.style.display='flex';}
   const nb=document.getElementById('nav'+name.charAt(0).toUpperCase()+name.slice(1));
   if(nb) nb.classList.add('active');
-
   if(name==='home')     renderHome();
   if(name==='calendar') renderCalendar();
   if(name==='settings') { document.getElementById('totalCount').textContent=DB.diaries.length; }
@@ -596,94 +784,117 @@ function showPage(name) {
 
 function openWrite(id=null) {
   editingId = id;
-  writePhotos = []; writeTags = [];
+  blocks = []; blockIdCounter = 0;
+  galleryPhotos = []; writeTags = [];
   selectedMoodIdx = -1; selectedWeatherIdx = -1;
   document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.weather-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('writeTitle').value = '';
-  document.getElementById('writeBody').value = '';
-  document.getElementById('photoPreviews').innerHTML = '';
   document.getElementById('writeTags').innerHTML = '';
+  document.getElementById('tagInput').value = '';
   document.getElementById('writeDate').value = todayStr();
+  document.getElementById('writeToolbarTitle').textContent = id ? '일기 수정' : '새 일기';
 
   if (id) {
     const d = getDiary(id);
     if (d) {
       document.getElementById('writeDate').value = d.date;
       document.getElementById('writeTitle').value = d.title||'';
-      document.getElementById('writeBody').value = d.body||'';
-      if (d.mood !== undefined) {
-        selectedMoodIdx = d.mood;
-        const mb=document.getElementById('mood_'+d.mood);
-        if(mb) mb.classList.add('active');
-      }
-      if (d.weather !== undefined) {
-        selectedWeatherIdx = d.weather;
-        const wb=document.getElementById('weather_'+d.weather);
-        if(wb) wb.classList.add('active');
-      }
-      writePhotos = d.photos ? [...d.photos] : [];
+      if (d.mood !== undefined) { selectedMoodIdx=d.mood; const mb=document.getElementById('mood_'+d.mood); if(mb)mb.classList.add('active'); }
+      if (d.weather !== undefined) { selectedWeatherIdx=d.weather; const wb=document.getElementById('weather_'+d.weather); if(wb)wb.classList.add('active'); }
       writeTags = d.tags ? [...d.tags] : [];
-      renderPhotoPreviews(); renderWriteTags();
+      renderWriteTags();
+
+      // 모드 복원
+      if (d.mode === 'gallery') {
+        galleryPhotos = d.photos ? [...d.photos] : [];
+        document.getElementById('galleryBody').value = d.body || '';
+        selectWriteMode('gallery');
+        renderPhotoSortList();
+      } else {
+        // 블록 모드 복원
+        if (d.blocks && d.blocks.length) {
+          blocks = d.blocks.map(b => ({...b, id:'b'+(blockIdCounter++)}));
+        } else {
+          // 구 버전 일기 → 텍스트 블록으로 변환
+          if (d.body) addBlock('text', d.body);
+          if (d.photos?.length) d.photos.forEach(src => blocks.push({id:'b'+(blockIdCounter++),type:'photo',content:'',src}));
+        }
+        selectWriteMode('block');
+        renderBlocks();
+      }
     }
+  } else {
+    // 새 일기: 기본 텍스트 블록 하나
+    selectWriteMode('block');
+    addBlock('text');
   }
+
   showPage('write');
   document.getElementById('appMain').scrollTop = 0;
 }
 
 function cancelWrite() {
   editingId = null;
-  if (detailFrom === 'detail' && editingId) showPage('detail');
-  else showPage('home');
+  showPage('home');
 }
 
 function saveDiary() {
-  const body = document.getElementById('writeBody').value.trim();
-  if (!body) { showToast('일기 내용을 입력해주세요', 'warn'); return; }
+  let body = '', photos = [], blocksData = [];
+
+  if (writeMode === 'block') {
+    // 텍스트 합쳐서 body, 사진 모음
+    blocksData = blocks.map(b => ({type:b.type, content:b.content||'', src:b.src||''}));
+    body = blocks.filter(b=>b.type==='text').map(b=>b.content).join('\n').trim();
+    photos = blocks.filter(b=>b.type==='photo'&&b.src).map(b=>b.src);
+    if (!body && !photos.length) { showToast('내용을 입력해주세요', 'warn'); return; }
+  } else {
+    body = document.getElementById('galleryBody').value.trim();
+    photos = [...galleryPhotos];
+    blocksData = [];
+    if (!body && !photos.length) { showToast('내용이나 사진을 추가해주세요', 'warn'); return; }
+  }
+
   const date = document.getElementById('writeDate').value || todayStr();
   const title = document.getElementById('writeTitle').value.trim();
 
   const entry = {
     id: editingId || DB.nextId++,
-    date, title, body,
+    date, title, body, photos,
+    mode: writeMode,
+    blocks: writeMode==='block' ? blocksData : [],
     mood: selectedMoodIdx >= 0 ? selectedMoodIdx : undefined,
     weather: selectedWeatherIdx >= 0 ? selectedWeatherIdx : undefined,
-    photos: [...writePhotos],
     tags: [...writeTags],
     createdAt: editingId ? getDiary(editingId)?.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
-  if (editingId) {
-    const idx = DB.diaries.findIndex(d=>d.id===editingId);
-    if(idx>=0) DB.diaries[idx] = entry;
-  } else {
-    DB.diaries.unshift(entry);
+  try {
+    if (editingId) {
+      const idx = DB.diaries.findIndex(d=>d.id===editingId);
+      if(idx>=0) DB.diaries[idx] = entry;
+    } else {
+      DB.diaries.unshift(entry);
+    }
+    DB.diaries.sort((a,b)=>b.date.localeCompare(a.date));
+    saveDB();
+  } catch(e) {
+    showToast('저장 실패 — 사진 용량을 줄여보세요', 'warn'); return;
   }
-  DB.diaries.sort((a,b)=>b.date.localeCompare(a.date));
-  saveDB();
+
   editingId = null;
-  showToast(editingId ? '수정됐어요 🌿' : '일기를 저장했어요 🌿', 'success');
+  showToast('일기를 저장했어요 🌿', 'success');
   showPage('home');
 }
 
-// ─── PHOTOS ──────────────────────────────────────────────
-function handlePhotos(e) {
-  const files = Array.from(e.target.files);
-  if (writePhotos.length + files.length > 6) { showToast('사진은 최대 6장이에요', 'warn'); return; }
-  files.forEach(file => compressPhoto(file, src => {
-    writePhotos.push(src);
-    renderPhotoPreviews();
-  }));
-  e.target.value = '';
-}
-
+// ─── PHOTOS (공통 압축) ──────────────────────────────────────────────
 function compressPhoto(file, callback) {
   const reader = new FileReader();
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
-      const MAX = 900; // 최대 가로/세로
+      const MAX = 900;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -692,22 +903,12 @@ function compressPhoto(file, callback) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      // JPEG 품질 0.65 → 파일 크기 약 1/5~1/10로 축소
-      callback(canvas.toDataURL('image/jpeg', 0.65));
+      callback(canvas.toDataURL('image/jpeg', 0.72));
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 }
-
-function renderPhotoPreviews() {
-  document.getElementById('photoPreviews').innerHTML = writePhotos.map((src,i)=>
-    `<div class="photo-preview-wrap">
-      <img class="photo-preview-img" src="${src}" alt="">
-      <button class="photo-del-btn" onclick="removePhoto(${i})">✕</button>
-    </div>`).join('');
-}
-function removePhoto(idx) { writePhotos.splice(idx,1); renderPhotoPreviews(); }
 
 // ─── TAGS ──────────────────────────────────────────────
 function addTag() {
@@ -800,34 +1001,50 @@ function openDiary(id, from='home') {
   const dateLabel=`${dateObj.getFullYear()}년 ${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${days2[dateObj.getDay()]})`;
   const moodEmoji=d.mood!==undefined?MOODS[d.mood].e:'';
   const weatherStr=d.weather!==undefined?WEATHERS[d.weather]:'';
+  const tags=d.tags?.length?`<div class="detail-tags">${d.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('')}</div>`:'';
 
-  // 사진 그리드 — 1장:전체, 2장:2열, 3장+: 첫장 크게+나머지 그리드
-  let photosHTML = '';
-  if (d.photos?.length) {
-    const photos = d.photos;
+  let contentHTML = '';
+
+  if (d.mode === 'block' && d.blocks?.length) {
+    // 블록 모드 렌더링
+    const allPhotos = d.blocks.filter(b=>b.type==='photo'&&b.src).map(b=>b.src);
+    contentHTML = d.blocks.map(b => {
+      if (b.type === 'text') {
+        return `<div class="detail-body" style="margin-bottom:12px;">${b.content.replace(/\n/g,'<br>')}</div>`;
+      } else if (b.type === 'photo' && b.src) {
+        const idx = allPhotos.indexOf(b.src);
+        return `<div style="margin-bottom:10px;border-radius:16px;overflow:hidden;">
+          <img src="${b.src}" style="width:100%;max-height:280px;object-fit:cover;display:block;cursor:pointer;border-radius:16px;"
+            onclick="openLightbox(${JSON.stringify(allPhotos)},${idx})">
+        </div>`;
+      }
+      return '';
+    }).join('');
+  } else if (d.mode === 'gallery' || !d.mode) {
+    // 사진모음 모드 or 구 버전
+    const photos = d.photos || [];
+    let photosHTML = '';
     if (photos.length === 1) {
-      photosHTML = `<div style="margin-bottom:16px;border-radius:16px;overflow:hidden;">
-        <img src="${photos[0]}" style="width:100%;max-height:280px;object-fit:cover;display:block;cursor:pointer;border-radius:16px;" onclick="openLightbox(${JSON.stringify(photos)},0)">
-      </div>`;
+      photosHTML = `<div style="margin-bottom:16px;"><img src="${photos[0]}" style="width:100%;max-height:280px;object-fit:cover;border-radius:16px;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},0)"></div>`;
     } else if (photos.length === 2) {
       photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">
         ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
       </div>`;
-    } else {
-      const rest = photos.slice(1);
+    } else if (photos.length >= 3) {
+      const rest = photos.slice(1,4);
       photosHTML = `<div style="margin-bottom:16px;">
         <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},0)">
         <div style="display:grid;grid-template-columns:repeat(${Math.min(rest.length,3)},1fr);gap:3px;margin-top:3px;">
           ${rest.map((s,i)=>`<div style="position:relative;">
-            <img src="${s}" style="width:100%;height:100px;object-fit:cover;border-radius:${i===rest.length-1&&rest.length<3?'0 0 16px 0':'0'};display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i+1})">
-            ${i===2&&photos.length>4?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700;cursor:pointer;border-radius:0 0 16px 0;" onclick="openLightbox(${JSON.stringify(photos)},3)">+${photos.length-4}</div>`:''}
-          </div>`).slice(0,3).join('')}
+            <img src="${s}" style="width:100%;height:100px;object-fit:cover;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i+1})">
+            ${i===2&&photos.length>4?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},3)">+${photos.length-4}</div>`:''}
+          </div>`).join('')}
         </div>
       </div>`;
     }
+    contentHTML = `${photosHTML}<div class="detail-body">${(d.body||'').replace(/\n/g,'<br>')}</div>`;
   }
 
-  const tags=d.tags?.length?`<div class="detail-tags">${d.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('')}</div>`:'';
   document.getElementById('detailContent').innerHTML=`
     <div class="detail-meta">
       <span class="detail-date">${dateLabel}</span>
@@ -835,8 +1052,7 @@ function openDiary(id, from='home') {
       ${weatherStr?`<span style="font-size:14px;color:var(--text-muted)">${weatherStr}</span>`:''}
     </div>
     ${d.title?`<div class="detail-title">${d.title}</div>`:''}
-    ${photosHTML}
-    <div class="detail-body">${d.body}</div>
+    ${contentHTML}
     ${tags}`;
   showPage('detail');
 }
