@@ -194,9 +194,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .pin-text-input:focus{border-color:var(--green-mid)}
 
 /* ── PHOTO LIGHTBOX ── */
-#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;align-items:center;justify-content:center;cursor:pointer}
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;align-items:center;justify-content:center;cursor:pointer}
 #lightbox.open{display:flex}
-#lightboxImg{max-width:95vw;max-height:90vh;border-radius:12px;object-fit:contain}
+#lightboxImg{max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;cursor:default}
+#lbPrev,#lbNext{display:none;align-items:center;justify-content:center;}
+#lightbox.open #lbPrev,#lightbox.open #lbNext{display:flex;}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:12px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;pointer-events:none}
@@ -432,8 +434,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 </div>
 
 <!-- LIGHTBOX -->
-<div id="lightbox" onclick="closeLightbox()">
-  <img id="lightboxImg" src="" alt="">
+<div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;flex-direction:column;align-items:center;justify-content:center;">
+  <button id="lbPrev" onclick="event.stopPropagation();lbPrev()"
+    style="display:none;position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;align-items:center;justify-content:center;cursor:pointer;z-index:10;">‹</button>
+  <img id="lightboxImg" src="" alt=""
+    style="max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;"
+    onclick="event.stopPropagation()">
+  <div id="lbCounter"
+    style="display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;"></div>
+  <button id="lbNext" onclick="event.stopPropagation();lbNext()"
+    style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;align-items:center;justify-content:center;cursor:pointer;z-index:10;">›</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -660,13 +671,35 @@ function saveDiary() {
 function handlePhotos(e) {
   const files = Array.from(e.target.files);
   if (writePhotos.length + files.length > 6) { showToast('사진은 최대 6장이에요', 'warn'); return; }
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = (ev) => { writePhotos.push(ev.target.result); renderPhotoPreviews(); };
-    reader.readAsDataURL(file);
-  });
+  files.forEach(file => compressPhoto(file, src => {
+    writePhotos.push(src);
+    renderPhotoPreviews();
+  }));
   e.target.value = '';
 }
+
+function compressPhoto(file, callback) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 900; // 최대 가로/세로
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      // JPEG 품질 0.65 → 파일 크기 약 1/5~1/10로 축소
+      callback(canvas.toDataURL('image/jpeg', 0.65));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function renderPhotoPreviews() {
   document.getElementById('photoPreviews').innerHTML = writePhotos.map((src,i)=>
     `<div class="photo-preview-wrap">
@@ -767,7 +800,33 @@ function openDiary(id, from='home') {
   const dateLabel=`${dateObj.getFullYear()}년 ${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${days2[dateObj.getDay()]})`;
   const moodEmoji=d.mood!==undefined?MOODS[d.mood].e:'';
   const weatherStr=d.weather!==undefined?WEATHERS[d.weather]:'';
-  const photos=d.photos?.length?`<div class="detail-photos">${d.photos.map(s=>`<img class="detail-photo" src="${s}" onclick="openLightbox('${s}')">`).join('')}</div>`:'';
+
+  // 사진 그리드 — 1장:전체, 2장:2열, 3장+: 첫장 크게+나머지 그리드
+  let photosHTML = '';
+  if (d.photos?.length) {
+    const photos = d.photos;
+    if (photos.length === 1) {
+      photosHTML = `<div style="margin-bottom:16px;border-radius:16px;overflow:hidden;">
+        <img src="${photos[0]}" style="width:100%;max-height:280px;object-fit:cover;display:block;cursor:pointer;border-radius:16px;" onclick="openLightbox(${JSON.stringify(photos)},0)">
+      </div>`;
+    } else if (photos.length === 2) {
+      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">
+        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
+      </div>`;
+    } else {
+      const rest = photos.slice(1);
+      photosHTML = `<div style="margin-bottom:16px;">
+        <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},0)">
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(rest.length,3)},1fr);gap:3px;margin-top:3px;">
+          ${rest.map((s,i)=>`<div style="position:relative;">
+            <img src="${s}" style="width:100%;height:100px;object-fit:cover;border-radius:${i===rest.length-1&&rest.length<3?'0 0 16px 0':'0'};display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i+1})">
+            ${i===2&&photos.length>4?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700;cursor:pointer;border-radius:0 0 16px 0;" onclick="openLightbox(${JSON.stringify(photos)},3)">+${photos.length-4}</div>`:''}
+          </div>`).slice(0,3).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
   const tags=d.tags?.length?`<div class="detail-tags">${d.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('')}</div>`:'';
   document.getElementById('detailContent').innerHTML=`
     <div class="detail-meta">
@@ -776,7 +835,7 @@ function openDiary(id, from='home') {
       ${weatherStr?`<span style="font-size:14px;color:var(--text-muted)">${weatherStr}</span>`:''}
     </div>
     ${d.title?`<div class="detail-title">${d.title}</div>`:''}
-    ${photos}
+    ${photosHTML}
     <div class="detail-body">${d.body}</div>
     ${tags}`;
   showPage('detail');
@@ -909,8 +968,41 @@ function resetAll(){
 }
 
 // ─── LIGHTBOX ──────────────────────────────────────────────
-function openLightbox(src){ document.getElementById('lightboxImg').src=src; document.getElementById('lightbox').classList.add('open'); }
-function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+let _lbPhotos = [], _lbIdx = 0;
+
+function openLightbox(photos, idx) {
+  _lbPhotos = Array.isArray(photos) ? photos : [photos];
+  _lbIdx = idx || 0;
+  renderLightbox();
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function renderLightbox() {
+  document.getElementById('lightboxImg').src = _lbPhotos[_lbIdx];
+  const counter = document.getElementById('lbCounter');
+  if (_lbPhotos.length > 1) {
+    counter.textContent = `${_lbIdx + 1} / ${_lbPhotos.length}`;
+    counter.style.display = 'block';
+  } else {
+    counter.style.display = 'none';
+  }
+  document.getElementById('lbPrev').style.display = (_lbIdx > 0) ? 'flex' : 'none';
+  document.getElementById('lbNext').style.display = (_lbIdx < _lbPhotos.length - 1) ? 'flex' : 'none';
+}
+
+function lbPrev() { if (_lbIdx > 0) { _lbIdx--; renderLightbox(); } }
+function lbNext() { if (_lbIdx < _lbPhotos.length - 1) { _lbIdx++; renderLightbox(); } }
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+// 터치 스와이프
+let _lbTouchX = null;
+function lbTouchStart(e) { _lbTouchX = e.touches[0].clientX; }
+function lbTouchEnd(e) {
+  if (_lbTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - _lbTouchX;
+  if (Math.abs(dx) > 50) { dx < 0 ? lbNext() : lbPrev(); }
+  _lbTouchX = null;
+}
 
 // ─── TOAST ──────────────────────────────────────────────
 function showToast(msg,type=''){
