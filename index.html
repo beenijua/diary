@@ -194,14 +194,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .pin-text-input:focus{border-color:var(--green-mid)}
 
 /* ── PHOTO LIGHTBOX ── */
-#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;align-items:center;justify-content:center;cursor:pointer}
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9000;align-items:center;justify-content:center;cursor:pointer}
 #lightbox.open{display:flex}
-#lightboxImg{max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;cursor:default}
-#lbPrev,#lbNext{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10}
+#lightboxImg{max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;cursor:default;display:block}
+#lbPrev,#lbNext{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.2);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10;line-height:1}
 #lbPrev{left:12px}
 #lbNext{right:12px}
 #lightbox.open #lbPrev,#lightbox.open #lbNext{display:flex}
-#lbCounter{display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600}
+#lbCounter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;display:none}
+#lightbox.open #lbCounter.visible{display:block}
 
 /* ── 쓰기 모드 선택 ── */
 .write-mode-tabs{display:flex;gap:0;background:var(--border-light);border-radius:14px;padding:3px;margin-bottom:16px}
@@ -487,17 +488,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 </div>
 
 <!-- LIGHTBOX -->
-<div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)"
-  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;flex-direction:column;align-items:center;justify-content:center;">
-  <button id="lbPrev" onclick="event.stopPropagation();lbPrev()"
-    style="display:none;position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;align-items:center;justify-content:center;cursor:pointer;z-index:10;">‹</button>
-  <img id="lightboxImg" src="" alt=""
-    style="max-width:95vw;max-height:85vh;border-radius:12px;object-fit:contain;"
-    onclick="event.stopPropagation()">
-  <div id="lbCounter"
-    style="display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;"></div>
-  <button id="lbNext" onclick="event.stopPropagation();lbNext()"
-    style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:24px;align-items:center;justify-content:center;cursor:pointer;z-index:10;">›</button>
+<div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)">
+  <button id="lbPrev" onclick="event.stopPropagation();lbPrev()">‹</button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+  <div id="lbCounter"></div>
+  <button id="lbNext" onclick="event.stopPropagation();lbNext()">›</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -678,17 +673,25 @@ function renderBlocks() {
       </div>`;
     } else {
       return `<div class="block-item">${ctrl}
-        <div class="block-photo-wrap">
+        <div class="block-photo-wrap" style="position:relative">
+          <input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">
           ${b.src
-            ? `<img class="block-photo-img" src="${b.src}" onclick="openLightbox([this.src],0)" alt="">`
-            : `<div class="block-photo-placeholder" onclick="triggerBlockPhoto('${b.id}')">📷 사진을 탭해서 추가하세요</div>`}
-          ${b.src ? `<input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">
-          <button onclick="triggerBlockPhoto('${b.id}')" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);border:none;color:white;border-radius:10px;padding:5px 10px;font-size:12px;cursor:pointer;">사진 변경</button>` : ''}
-          ${!b.src ? `<input type="file" id="bpf_${b.id}" accept="image/*" style="display:none" onchange="handleBlockPhoto('${b.id}',event)">` : ''}
+            ? `<img class="block-photo-img" src="${b.src}" onclick="openBlockPhotoLightbox('${b.id}')" alt="">
+               <button onclick="event.stopPropagation();triggerBlockPhoto('${b.id}')" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);border:none;color:white;border-radius:10px;padding:5px 10px;font-size:12px;cursor:pointer;">변경</button>`
+            : `<div class="block-photo-placeholder" onclick="triggerBlockPhoto('${b.id}')">📷 탭해서 사진 추가</div>`}
         </div>
       </div>`;
     }
   }).join('');
+}
+
+function openBlockPhotoLightbox(id) {
+  const b = blocks.find(x=>x.id===id);
+  if (b && b.src) {
+    const allSrcs = blocks.filter(x=>x.type==='photo'&&x.src).map(x=>x.src);
+    const idx = allSrcs.indexOf(b.src);
+    openLightbox(allSrcs, idx >= 0 ? idx : 0);
+  }
 }
 
 function updateBlockContent(id, val) {
@@ -727,7 +730,7 @@ function handleBlockPhoto(id, e) {
 // ─── 사진모음 모드 ──────────────────────────────────────────────
 function handleGalleryPhotos(e) {
   const files = Array.from(e.target.files);
-  if (galleryPhotos.length + files.length > 6) { showToast('사진은 최대 6장이에요', 'warn'); return; }
+  if (galleryPhotos.length + files.length > 4) { showToast('사진모음은 최대 4장이에요', 'warn'); return; }
   files.forEach(file => compressPhoto(file, src => {
     galleryPhotos.push(src);
     renderPhotoSortList();
@@ -740,7 +743,7 @@ function renderPhotoSortList() {
   if (!galleryPhotos.length) { el.innerHTML = ''; return; }
   el.innerHTML = galleryPhotos.map((src, i) => `
     <div class="photo-sort-item">
-      <img class="photo-sort-img" src="${src}" onclick="openLightbox(${JSON.stringify(galleryPhotos)},${i})" alt="">
+      <img class="photo-sort-img" src="${src}" onclick="openLightbox(galleryPhotos,${i})" alt="">
       <div class="photo-sort-info">${i+1}번째 사진</div>
       <div class="photo-sort-btns">
         <button class="photo-sort-btn" onclick="moveGalleryPhoto(${i},-1)" ${i===0?'disabled':''}>↑</button>
@@ -1021,25 +1024,31 @@ function openDiary(id, from='home') {
       return '';
     }).join('');
   } else if (d.mode === 'gallery' || !d.mode) {
-    // 사진모음 모드 or 구 버전
     const photos = d.photos || [];
     let photosHTML = '';
     if (photos.length === 1) {
-      photosHTML = `<div style="margin-bottom:16px;"><img src="${photos[0]}" style="width:100%;max-height:280px;object-fit:cover;border-radius:16px;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},0)"></div>`;
-    } else if (photos.length === 2) {
-      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">
-        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
-      </div>`;
-    } else if (photos.length >= 3) {
-      const rest = photos.slice(1,4);
       photosHTML = `<div style="margin-bottom:16px;">
-        <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},0)">
-        <div style="display:grid;grid-template-columns:repeat(${Math.min(rest.length,3)},1fr);gap:3px;margin-top:3px;">
-          ${rest.map((s,i)=>`<div style="position:relative;">
-            <img src="${s}" style="width:100%;height:100px;object-fit:cover;display:block;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},${i+1})">
-            ${i===2&&photos.length>4?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700;cursor:pointer;" onclick="openLightbox(${JSON.stringify(photos)},3)">+${photos.length-4}</div>`:''}
-          </div>`).join('')}
+        <img src="${photos[0]}" style="width:100%;max-height:300px;object-fit:cover;border-radius:16px;display:block;cursor:pointer;"
+          onclick="openLightbox(${JSON.stringify(photos)},0)">
+      </div>`;
+    } else if (photos.length === 2) {
+      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;border-radius:16px;overflow:hidden;">
+        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:180px;object-fit:cover;cursor:pointer;"
+          onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
+      </div>`;
+    } else if (photos.length === 3) {
+      photosHTML = `<div style="margin-bottom:16px;border-radius:16px;overflow:hidden;">
+        <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;display:block;cursor:pointer;"
+          onclick="openLightbox(${JSON.stringify(photos)},0)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:2px;">
+          ${photos.slice(1).map((s,i)=>`<img src="${s}" style="width:100%;height:130px;object-fit:cover;cursor:pointer;"
+            onclick="openLightbox(${JSON.stringify(photos)},${i+1})">`).join('')}
         </div>
+      </div>`;
+    } else if (photos.length === 4) {
+      photosHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;border-radius:16px;overflow:hidden;">
+        ${photos.map((s,i)=>`<img src="${s}" style="width:100%;height:160px;object-fit:cover;cursor:pointer;"
+          onclick="openLightbox(${JSON.stringify(photos)},${i})">`).join('')}
       </div>`;
     }
     contentHTML = `${photosHTML}<div class="detail-body">${(d.body||'').replace(/\n/g,'<br>')}</div>`;
@@ -1170,9 +1179,17 @@ function importData(e){
   r.onload=(ev)=>{
     try{
       const data=JSON.parse(ev.target.result);
-      if(data.diaries){DB=data;saveDB();renderHome();showToast('📥 가져오기 완료!','success');}
-      else showToast('올바른 백업 파일이 아니에요','warn');
-    }catch{showToast('파일 오류','warn');}
+      if(!data.diaries){ showToast('올바른 백업 파일이 아니에요','warn'); return; }
+      const currentPin = DB.pin; // PIN은 유지
+      DB = data;
+      DB.pin = currentPin; // 현재 PIN으로 덮어쓰기
+      if(!DB.nextId) DB.nextId = DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1;
+      saveDB();
+      renderHome();
+      showToast(`📥 일기 ${DB.diaries.length}개 가져왔어요!`,'success');
+    } catch(err) {
+      showToast('파일을 읽을 수 없어요','warn');
+    }
     e.target.value='';
   };
   r.readAsText(file);
@@ -1185,33 +1202,41 @@ function resetAll(){
 
 // ─── LIGHTBOX ──────────────────────────────────────────────
 let _lbPhotos = [], _lbIdx = 0;
+let _lbTouchX = null;
 
 function openLightbox(photos, idx) {
   _lbPhotos = Array.isArray(photos) ? photos : [photos];
-  _lbIdx = idx || 0;
-  renderLightbox();
+  _lbIdx = typeof idx === 'number' ? idx : 0;
+  _renderLightbox();
   document.getElementById('lightbox').classList.add('open');
 }
 
-function renderLightbox() {
+function _renderLightbox() {
   document.getElementById('lightboxImg').src = _lbPhotos[_lbIdx];
   const counter = document.getElementById('lbCounter');
+  const prev = document.getElementById('lbPrev');
+  const next = document.getElementById('lbNext');
   if (_lbPhotos.length > 1) {
     counter.textContent = `${_lbIdx + 1} / ${_lbPhotos.length}`;
-    counter.style.display = 'block';
+    counter.classList.add('visible');
   } else {
-    counter.style.display = 'none';
+    counter.classList.remove('visible');
   }
-  document.getElementById('lbPrev').style.display = (_lbIdx > 0) ? 'flex' : 'none';
-  document.getElementById('lbNext').style.display = (_lbIdx < _lbPhotos.length - 1) ? 'flex' : 'none';
+  prev.style.opacity = _lbIdx > 0 ? '1' : '0';
+  prev.style.pointerEvents = _lbIdx > 0 ? 'auto' : 'none';
+  next.style.opacity = _lbIdx < _lbPhotos.length - 1 ? '1' : '0';
+  next.style.pointerEvents = _lbIdx < _lbPhotos.length - 1 ? 'auto' : 'none';
 }
 
-function lbPrev() { if (_lbIdx > 0) { _lbIdx--; renderLightbox(); } }
-function lbNext() { if (_lbIdx < _lbPhotos.length - 1) { _lbIdx++; renderLightbox(); } }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
-
-// 터치 스와이프
-let _lbTouchX = null;
+function lbPrev() {
+  if (_lbIdx > 0) { _lbIdx--; _renderLightbox(); }
+}
+function lbNext() {
+  if (_lbIdx < _lbPhotos.length - 1) { _lbIdx++; _renderLightbox(); }
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
 function lbTouchStart(e) { _lbTouchX = e.touches[0].clientX; }
 function lbTouchEnd(e) {
   if (_lbTouchX === null) return;
