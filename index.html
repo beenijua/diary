@@ -437,6 +437,22 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
   <div class="page" id="page-settings">
     <div class="settings-content">
       <div class="s-group">
+        <div class="s-group-title">☁️ GitHub 동기화</div>
+        <div class="s-item" style="flex-direction:column;align-items:flex-start;gap:10px;">
+          <div style="width:100%">
+            <div class="s-label">Personal Access Token</div>
+            <div class="s-sub">설정하면 데이터가 GitHub에 자동 저장돼요</div>
+          </div>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx"
+            style="width:100%;background:var(--green-mist);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none;">
+          <div style="display:flex;gap:8px;width:100%">
+            <button class="s-btn" onclick="saveGhToken()" style="flex:1;">저장</button>
+            <button class="s-btn" onclick="syncFromGitHub()" style="flex:1;">지금 불러오기</button>
+          </div>
+          <div id="syncStatus" style="font-size:12px;color:var(--text-muted);width:100%;line-height:1.6;"></div>
+        </div>
+      </div>
+      <div class="s-group">
         <div class="s-group-title">🔒 보안</div>
         <div class="s-item">
           <div><div class="s-label">PIN 변경</div><div class="s-sub">4자리 숫자</div></div>
@@ -516,7 +532,105 @@ function loadDB() {
   if (!DB.diaries) DB.diaries = [];
   if (!DB.nextId) DB.nextId = (DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1);
 }
-function saveDB() { localStorage.setItem('diary_db', JSON.stringify(DB)); }
+function saveDB() {
+  localStorage.setItem('diary_db', JSON.stringify(DB));
+  githubSave();
+}
+
+// ─── GITHUB 동기화 ──────────────────────────────────────────────
+const GH_OWNER = 'beenijua';
+const GH_REPO  = 'diary';
+const GH_FILE  = 'data/diary-data.json';
+const GH_API   = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+
+function getGhToken() { return localStorage.getItem('gh_token_diary') || ''; }
+
+function saveGhToken() {
+  const t = document.getElementById('ghToken').value.trim();
+  if (!t) { showToast('토큰을 입력해주세요', 'warn'); return; }
+  localStorage.setItem('gh_token_diary', t);
+  document.getElementById('ghToken').value = '';
+  document.getElementById('syncStatus').textContent = '✅ 토큰 저장됐어요! 지금 불러오기를 눌러보세요.';
+  showToast('토큰 저장됐어요 ✅', 'success');
+}
+
+let _ghSaveTimer = null;
+async function githubSave() {
+  const token = getGhToken(); if (!token) return;
+  clearTimeout(_ghSaveTimer);
+  _ghSaveTimer = setTimeout(async () => {
+    try {
+      const jsonStr = JSON.stringify(DB);
+      // 1MB 초과 시 사진 없이 저장
+      if (jsonStr.length > 900000) {
+        const lightDB = {
+          ...DB,
+          diaries: DB.diaries.map(d => ({...d, photos: [], blocks: (d.blocks||[]).map(b => b.type==='photo' ? {...b, src:''} : b)}))
+        };
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(lightDB))));
+        await _ghPut(token, content);
+        const el = document.getElementById('syncStatus');
+        if (el) el.textContent = '⚠️ 용량 초과로 사진 제외 저장됨';
+        return;
+      }
+      const content = btoa(unescape(encodeURIComponent(jsonStr)));
+      await _ghPut(token, content);
+      const now = new Date();
+      const el = document.getElementById('syncStatus');
+      if (el) el.textContent = `☁️ 마지막 저장: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    } catch(e) { /* 조용히 실패 */ }
+  }, 1500);
+}
+
+async function _ghPut(token, content) {
+  let sha = '';
+  try {
+    const r = await fetch(GH_API, { headers: { Authorization: `token ${token}` } });
+    if (r.ok) { const j = await r.json(); sha = j.sha; }
+  } catch(e) {}
+  const body = { message: 'sync: diary data', content };
+  if (sha) body.sha = sha;
+  await fetch(GH_API, {
+    method: 'PUT',
+    headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function syncFromGitHub() {
+  const token = getGhToken();
+  if (!token) { showToast('먼저 토큰을 저장해주세요', 'warn'); return; }
+  const el = document.getElementById('syncStatus');
+  if (el) el.textContent = '⏳ 불러오는 중...';
+  try {
+    const res = await fetch(GH_API + '?t=' + Date.now(), {
+      headers: { Authorization: `token ${token}` }
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        if (el) el.textContent = '☁️ 저장된 데이터 없음 (처음 사용)';
+        showToast('아직 저장된 데이터가 없어요', 'warn');
+      } else {
+        if (el) el.textContent = '❌ 불러오기 실패 (토큰 확인)';
+      }
+      return;
+    }
+    const j = await res.json();
+    const data = JSON.parse(decodeURIComponent(escape(atob(j.content))));
+    const currentPin = DB.pin;
+    DB = data;
+    DB.pin = currentPin;
+    if (!DB.diaries) DB.diaries = [];
+    if (!DB.nextId) DB.nextId = DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1;
+    localStorage.setItem('diary_db', JSON.stringify(DB));
+    renderHome();
+    document.getElementById('totalCount').textContent = DB.diaries.length;
+    if (el) el.textContent = `✅ 일기 ${DB.diaries.length}개 불러왔어요!`;
+    showToast(`일기 ${DB.diaries.length}개 불러왔어요 ✅`, 'success');
+  } catch(e) {
+    if (el) el.textContent = '❌ 오류: ' + e.message;
+  }
+}
 
 function getDiary(id) { return DB.diaries.find(d=>d.id===id); }
 function getDiaryByDate(dateStr) { return DB.diaries.filter(d=>d.date===dateStr); }
@@ -588,13 +702,17 @@ function unlockApp() {
 }
 
 // ─── APP INIT ──────────────────────────────────────────────
-function initApp() {
+async function initApp() {
   const now=new Date(); calYear=now.getFullYear(); calMonth=now.getMonth();
-  renderHome(); renderMoodRow(); renderWeatherRow();
-  // 날짜 기본값
+  renderMoodRow(); renderWeatherRow();
   document.getElementById('writeDate').value = todayStr();
-  // 설정 업데이트
   document.getElementById('totalCount').textContent = DB.diaries.length;
+  // 토큰 있으면 GitHub에서 자동 불러오기
+  if (getGhToken()) {
+    await syncFromGitHub();
+  } else {
+    renderHome();
+  }
 }
 
 function renderMoodRow() {
@@ -789,7 +907,15 @@ function showPage(name) {
   if(nb) nb.classList.add('active');
   if(name==='home')     renderHome();
   if(name==='calendar') renderCalendar();
-  if(name==='settings') { document.getElementById('totalCount').textContent=DB.diaries.length; }
+  if(name==='settings') {
+    document.getElementById('totalCount').textContent=DB.diaries.length;
+    const el = document.getElementById('syncStatus');
+    if (el) {
+      el.textContent = getGhToken()
+        ? '✅ 토큰 설정됨 · 자동 저장 활성화'
+        : '⚠️ 토큰 없음 · 데이터가 언제든 삭제될 수 있어요';
+    }
+  }
 }
 
 function openWrite(id=null) {
