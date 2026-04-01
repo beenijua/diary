@@ -492,16 +492,25 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     </div>
   </div>
 
+  <!-- PAGE: PHOTO -->
+  <div class="page" id="page-photo" style="padding:16px;overflow-y:auto;">
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.4px;margin-bottom:12px;" id="photoDateLabel"></div>
+    <!-- 오늘 사진 영역 -->
+    <div id="photoContent"></div>
+  </div>
+
 </div>
 
 <!-- NAV -->
 <div class="app-nav" id="appNav" style="display:none">
   <button class="nav-btn active" id="navHome" onclick="showPage('home')"><span class="nav-icon">🏠</span>홈</button>
   <button class="nav-btn" id="navCalendar" onclick="showPage('calendar')"><span class="nav-icon">📅</span>달력</button>
+  <button class="nav-btn" id="navPhoto" onclick="showPage('photo')"><span class="nav-icon">📷</span>사진</button>
   <button class="nav-btn" id="navWrite" onclick="openWrite()"><span class="nav-icon">✍️</span>쓰기</button>
-  <button class="nav-btn" id="navSearch" onclick="showPage('search')"><span class="nav-icon">🔍</span>검색</button>
-  <button class="nav-btn" id="navSettings" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>설정</button>
 </div>
+
+<input type="file" id="photoAddInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,false)">
+<input type="file" id="photoChangeInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,true)">
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)">
@@ -530,6 +539,7 @@ function loadDB() {
   const raw = localStorage.getItem('diary_db');
   if (raw) DB = JSON.parse(raw);
   if (!DB.diaries) DB.diaries = [];
+  if (!DB.dailyPhotos) DB.dailyPhotos = {}; // { 'YYYY-MM-DD': {src, memo} }
   if (!DB.nextId) DB.nextId = (DB.diaries.length ? Math.max(...DB.diaries.map(d=>d.id))+1 : 1);
 }
 function saveDB() {
@@ -891,9 +901,9 @@ function removeGalleryPhoto(i) {
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────
-const NAV_PAGES = ['home','calendar','write','search','settings'];
+const NAV_PAGES = ['home','calendar','photo','write'];
 function showPage(name) {
-  ['home','calendar','write','search','settings','detail'].forEach(p=>{
+  ['home','calendar','photo','write','search','settings','detail'].forEach(p=>{
     const el=document.getElementById('page-'+p);
     if(el){el.classList.remove('active');if(p==='write')el.style.display='none';}
   });
@@ -907,6 +917,7 @@ function showPage(name) {
   if(nb) nb.classList.add('active');
   if(name==='home')     renderHome();
   if(name==='calendar') renderCalendar();
+  if(name==='photo')    renderPhotoTab();
   if(name==='settings') {
     document.getElementById('totalCount').textContent=DB.diaries.length;
     const el = document.getElementById('syncStatus');
@@ -1338,7 +1349,91 @@ function resetAll(){
   renderHome(); showToast('초기화 완료');
 }
 
-// ─── LIGHTBOX ──────────────────────────────────────────────
+// ─── PHOTO TAB ──────────────────────────────────────────────
+function renderPhotoTab() {
+  const today = todayStr();
+  const days = ['일','월','화','수','목','금','토'];
+  const d = new Date(); 
+  const label = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  document.getElementById('photoDateLabel').textContent = label;
+
+  const photo = DB.dailyPhotos[today];
+  const el = document.getElementById('photoContent');
+
+  if (photo) {
+    el.innerHTML = `
+      <div style="background:var(--white);border-radius:20px;overflow:hidden;border:1px solid var(--border-light);margin-bottom:12px;box-shadow:var(--shadow-sm);">
+        <div style="position:relative;">
+          <img src="${photo.src}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:pointer;" onclick="openPhotoLightbox('${today}')">
+          <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.35));padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-end;">
+            <span style="font-size:12px;color:rgba(255,255,255,.9);font-weight:500;">${(d.getMonth()+1)}.${d.getDate()}</span>
+            <button onclick="document.getElementById('photoChangeInput').click()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:5px 12px;font-size:11px;color:white;cursor:pointer;">변경</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--white);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;border:1px solid var(--border-light);">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.4px;margin-bottom:8px;">한 줄 메모</div>
+        <textarea id="photoMemoInput" rows="2" placeholder="오늘의 한 줄..."
+          style="width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:14px;color:var(--text);outline:none;resize:none;line-height:1.7;">${photo.memo||''}</textarea>
+      </div>
+      <button onclick="savePhotoMemo()" style="width:100%;padding:14px;background:var(--green-deep);color:white;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">저장</button>
+      <div style="margin-top:20px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.4px;margin-bottom:10px;">지난 사진</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+          ${Object.entries(DB.dailyPhotos).filter(([k])=>k!==today).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,9).map(([k,v])=>`
+            <div style="aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${k}')">
+              <img src="${v.src}" style="width:100%;height:100%;object-fit:cover;display:block;">
+              <div style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.4);border-radius:5px;padding:2px 5px;font-size:9px;color:rgba(255,255,255,.9);">${k.slice(5).replace('-','.')}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div onclick="document.getElementById('photoAddInput').click()"
+        style="background:var(--white);border:2px dashed var(--border);border-radius:20px;cursor:pointer;margin-bottom:12px;transition:border-color .2s;">
+        <div style="padding:52px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:var(--green-mist);border:2px dashed var(--green-light);display:flex;align-items:center;justify-content:center;font-size:24px;">📷</div>
+          <div style="font-size:14px;color:var(--text-muted);">오늘의 사진을 추가해요</div>
+          <div style="font-size:11px;color:var(--text-muted);opacity:.6;">TAP TO ADD</div>
+        </div>
+      </div>
+      ${Object.keys(DB.dailyPhotos).length > 0 ? `
+      <div style="margin-top:8px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.4px;margin-bottom:10px;">지난 사진</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+          ${Object.entries(DB.dailyPhotos).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,9).map(([k,v])=>`
+            <div style="aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${k}')">
+              <img src="${v.src}" style="width:100%;height:100%;object-fit:cover;display:block;">
+              <div style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.4);border-radius:5px;padding:2px 5px;font-size:9px;color:rgba(255,255,255,.9);">${k.slice(5).replace('-','.')}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}`;
+  }
+}
+
+function handleDailyPhoto(e, isChange) {
+  const file = e.target.files[0]; if (!file) return;
+  compressPhoto(file, src => {
+    const today = todayStr();
+    const memo = isChange ? (DB.dailyPhotos[today]?.memo || '') : '';
+    DB.dailyPhotos[today] = { src, memo };
+    saveDB(); renderPhotoTab();
+    showToast(isChange ? '사진 변경됐어요 🌿' : '사진 저장됐어요 🌿', 'success');
+  });
+  e.target.value = '';
+}
+
+function savePhotoMemo() {
+  const today = todayStr();
+  if (!DB.dailyPhotos[today]) return;
+  DB.dailyPhotos[today].memo = document.getElementById('photoMemoInput').value.trim();
+  saveDB(); showToast('저장됐어요 🌿', 'success');
+}
+
+function openPhotoLightbox(dateStr) {
+  const p = DB.dailyPhotos[dateStr]; if (!p) return;
+  openLightbox([p.src], 0);
+}
 let _lbPhotos = [], _lbIdx = 0;
 let _lbTouchX = null;
 
