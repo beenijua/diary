@@ -295,7 +295,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     <span class="app-logo">🌿 일기장</span>
   </div>
   <div style="display:flex;align-items:center;gap:4px">
-    <button class="header-btn" onclick="showPage('search')" title="검색">🔍</button>
     <button class="header-btn" onclick="showPage('settings')" title="설정">⚙️</button>
   </div>
 </div>
@@ -510,18 +509,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 
 <input type="file" id="photoAddInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,false)">
 <input type="file" id="photoChangeInput" accept="image/*" style="display:none" onchange="handleDailyPhoto(event,true)">
-
-function handleDailyPhoto(e, isChange) {
-  const file = e.target.files[0]; if (!file) return;
-  compressPhoto(file, src => {
-    const today = todayStr();
-    const memo = DB.dailyPhotos[today]?.memo || '';
-    DB.dailyPhotos[today] = { src, memo };
-    saveDB(); renderPhotoTab();
-    showToast('사진 저장됐어요 🌿', 'success');
-  });
-  e.target.value = '';
-}
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLightbox()" ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)">
@@ -1404,8 +1391,6 @@ function openPhotoDetail(dateStr) {
   const days=['일','월','화','수','목','금','토'];
   const d = new Date(dateStr+'T00:00:00');
   const label = `${d.getMonth()+1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
-
-  // 상세 오버레이
   const overlay = document.createElement('div');
   overlay.id = 'photoDetailOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:800;display:flex;flex-direction:column;';
@@ -1421,6 +1406,18 @@ function openPhotoDetail(dateStr) {
     ${p.memo ? `<div style="padding:16px 20px;background:rgba(0,0,0,.5);font-size:14px;color:rgba(255,255,255,.8);line-height:1.6;text-align:center;">${p.memo}</div>` : ''}
   `;
   document.body.appendChild(overlay);
+}
+
+function handleDailyPhoto(e, isChange) {
+  const file = e.target.files[0]; if (!file) return;
+  compressPhoto(file, src => {
+    const today = todayStr();
+    const memo = DB.dailyPhotos[today]?.memo || '';
+    DB.dailyPhotos[today] = { src, memo };
+    saveDB(); renderPhotoTab();
+    showToast('사진 저장됐어요 🌿', 'success');
+  });
+  e.target.value = '';
 }
 let _lbPhotos = [], _lbIdx = 0;
 let _lbTouchX = null;
