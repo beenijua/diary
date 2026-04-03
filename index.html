@@ -141,7 +141,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .title-input{width:100%;border:none;background:transparent;font-family:'Noto Serif KR',serif;font-size:20px;color:var(--text);outline:none;line-height:1.4}
 .title-input::placeholder{color:var(--border);font-family:'Noto Serif KR',serif}
 .divider{height:1px;background:var(--border-light)}
-.body-input{width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:15px;color:var(--text);outline:none;line-height:1.8;resize:none;min-height:200px}
+.body-input{width:100%;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:15px;color:var(--text);outline:none;line-height:1.8;resize:none;min-height:360px}
 .body-input::placeholder{color:var(--border)}
 
 /* 태그 */
@@ -493,6 +493,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 
   <!-- PAGE: PHOTO -->
   <div class="page" id="page-photo">
+    <div style="padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:var(--text-muted);flex-shrink:0;">날짜 선택</span>
+      <input type="date" id="photoDatePicker" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:7px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--cream);outline:none;" onchange="renderPhotoTab()">
+    </div>
     <div id="photoContent"></div>
   </div>
 
@@ -524,9 +528,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 // ─── DATA ──────────────────────────────────────────────
 const MOODS = [
   {e:'😊',l:'좋아'},{e:'😄',l:'신남'},{e:'🥰',l:'설렘'},{e:'😌',l:'평온'},
-  {e:'😔',l:'슬픔'},{e:'😤',l:'짜증'},{e:'😴',l:'피곤'},{e:'🤔',l:'고민'}
+  {e:'😔',l:'슬픔'},{e:'😢',l:'눈물'},{e:'😤',l:'짜증'},{e:'😡',l:'화남'},
+  {e:'😴',l:'피곤'},{e:'🤔',l:'고민'},{e:'😰',l:'불안'},{e:'😮',l:'놀람'},
+  {e:'🤒',l:'아픔'},{e:'😎',l:'자신감'},{e:'🥳',l:'신나'},{e:'😇',l:'감사'}
 ];
-const WEATHERS = ['☀️맑음','🌤️구름조금','☁️흐림','🌧️비','⛈️천둥','❄️눈','🌫️안개','🌙밤'];
+const WEATHERS = ['☀️맑음','🌤️구름조금','☁️흐림','🌧️비','⛈️천둥','❄️눈','🌫️안개'];
 
 let DB = { diaries:[], pin:'', nextId:1 };
 let editingId = null;
@@ -915,7 +921,11 @@ function showPage(name) {
   if(nb) nb.classList.add('active');
   if(name==='home')     renderHome();
   if(name==='calendar') renderCalendar();
-  if(name==='photo')    renderPhotoTab();
+  if(name==='photo') {
+    const picker = document.getElementById('photoDatePicker');
+    if (!picker.value) picker.value = todayStr();
+    renderPhotoTab();
+  }
   if(name==='settings') {
     document.getElementById('totalCount').textContent=DB.diaries.length;
     const el = document.getElementById('syncStatus');
@@ -1349,38 +1359,40 @@ function resetAll(){
 
 // ─── PHOTO TAB ──────────────────────────────────────────────
 function renderPhotoTab() {
+  const picker = document.getElementById('photoDatePicker');
+  if (!picker.value) picker.value = todayStr();
+  const selDate = picker.value;
   const today = todayStr();
   const el = document.getElementById('photoContent');
-  const todayPhoto = DB.dailyPhotos[today];
+  const selPhoto = DB.dailyPhotos[selDate];
   const allPhotos = Object.entries(DB.dailyPhotos).sort((a,b)=>b[0].localeCompare(a[0]));
 
   el.innerHTML = `
-    <!-- 오늘 업로드 영역 -->
     <div style="background:var(--white);border-bottom:1px solid var(--border-light);padding:14px 16px;display:flex;align-items:center;gap:12px;">
-      <div onclick="document.getElementById('photoAddInput').click()" style="width:60px;height:60px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px dashed ${todayPhoto?'var(--green)':'var(--border)'};background:var(--green-mist);display:flex;align-items:center;justify-content:center;">
-        ${todayPhoto
-          ? `<img src="${todayPhoto.src}" style="width:100%;height:100%;object-fit:cover;display:block;">`
+      <div onclick="document.getElementById('photoAddInput').click()" style="width:60px;height:60px;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px dashed ${selPhoto?'var(--green)':'var(--border)'};background:var(--green-mist);display:flex;align-items:center;justify-content:center;">
+        ${selPhoto
+          ? `<img src="${selPhoto.src}" style="width:100%;height:100%;object-fit:cover;display:block;">`
           : `<span style="font-size:22px;">+</span>`}
       </div>
       <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">${todayPhoto ? '오늘 사진 ✅' : '오늘 사진 추가하기'}</div>
-        <div style="font-size:11px;color:var(--text-muted);">${todayPhoto ? '탭해서 변경할 수 있어요' : '하루 한 장씩 기록해요'}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">${selPhoto ? '사진 ✅' : '사진 추가하기'}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${selDate === today ? '오늘' : selDate} · ${selPhoto ? '탭해서 변경' : '하루 한 장'}</div>
       </div>
-      ${todayPhoto ? `<button onclick="document.getElementById('photoAddInput').click()" style="background:var(--green-mist);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:12px;color:var(--green-deep);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">변경</button>` : ''}
+      ${selPhoto ? `<button onclick="document.getElementById('photoAddInput').click()" style="background:var(--green-mist);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:12px;color:var(--green-deep);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">변경</button>` : ''}
     </div>
 
     ${!allPhotos.length ? `
     <div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
       <div style="font-size:48px;margin-bottom:12px;">📷</div>
-      <div style="font-size:14px;line-height:1.8;">아직 사진이 없어요<br>오늘 첫 사진을 올려보세요!</div>
+      <div style="font-size:14px;line-height:1.8;">아직 사진이 없어요<br>날짜를 선택하고 추가해보세요!</div>
     </div>` : `
-    <!-- 갤러리 그리드 -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">
       ${allPhotos.map(([dateStr, p]) => `
         <div style="aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:var(--green-pale);"
           onclick="openPhotoDetail('${dateStr}')">
           <img src="${p.src}" style="width:100%;height:100%;object-fit:cover;display:block;">
           ${dateStr === today ? `<div style="position:absolute;top:4px;right:4px;background:var(--green);border-radius:6px;padding:2px 6px;font-size:9px;color:white;font-weight:700;">오늘</div>` : ''}
+          ${dateStr === selDate && selDate !== today ? `<div style="position:absolute;top:4px;right:4px;background:var(--green-mid);border-radius:6px;padding:2px 6px;font-size:9px;color:white;font-weight:700;">선택</div>` : ''}
         </div>`).join('')}
     </div>`}
   `;
@@ -1410,10 +1422,11 @@ function openPhotoDetail(dateStr) {
 
 function handleDailyPhoto(e, isChange) {
   const file = e.target.files[0]; if (!file) return;
+  const picker = document.getElementById('photoDatePicker');
+  const selDate = picker.value || todayStr();
   compressPhoto(file, src => {
-    const today = todayStr();
-    const memo = DB.dailyPhotos[today]?.memo || '';
-    DB.dailyPhotos[today] = { src, memo };
+    const memo = DB.dailyPhotos[selDate]?.memo || '';
+    DB.dailyPhotos[selDate] = { src, memo };
     saveDB(); renderPhotoTab();
     showToast('사진 저장됐어요 🌿', 'success');
   });
